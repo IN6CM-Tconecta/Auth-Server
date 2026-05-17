@@ -76,6 +76,12 @@ builder.Services.AddHttpClient<IWalletIntegrationService, WalletIntegrationServi
     client.DefaultRequestHeaders.Add("x-internal-secret", "SuperSecretS2S_Transmetro2026");
 });
 
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowAll", policy => {
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
@@ -86,6 +92,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
