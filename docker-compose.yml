@@ -16,10 +16,11 @@ services:
     networks:
       - transmetro_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   mongo-db:
     image: mongo:6.0
@@ -88,7 +89,7 @@ services:
 
   server-user:
     build:
-      context: ../Server-User/server-user
+      context: ../Server-User
       dockerfile: Dockerfile
     container_name: transmetro_server_user
     ports:

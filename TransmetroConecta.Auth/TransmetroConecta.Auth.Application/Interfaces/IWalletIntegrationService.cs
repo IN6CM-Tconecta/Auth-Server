@@ -11,4 +11,9 @@ public interface IWalletIntegrationService
     /// Emite una petición HTTP al server-client para acreditar el saldo recargado a la billetera virtual.
     /// </summary>
     Task<bool> AddFundsAsync(Guid userId, decimal amount);
+
+    /// <summary>
+    /// Verifica si el usuario ya cuenta con una Tarjeta Ciudadana activa.
+    /// </summary>
+    Task<bool> HasCitizenCardAsync(Guid userId);
 }

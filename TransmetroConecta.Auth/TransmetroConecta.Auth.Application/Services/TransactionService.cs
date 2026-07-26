@@ -76,6 +76,13 @@ public class TransactionService(IWalletIntegrationService walletIntegrationServi
             return new TransactionResponseDto { IsSuccess = false, Message = "Número de tarjeta inválido." };
         }
 
+        // Verificar si el usuario ya tiene la tarjeta (S2S con Node)
+        bool hasCard = await walletIntegrationService.HasCitizenCardAsync(userId);
+        if (hasCard)
+        {
+            return new TransactionResponseDto { IsSuccess = false, Message = "Transacción denegada. El usuario ya posee una Tarjeta Ciudadana activa." };
+        }
+
         await Task.Delay(1500);
 
         var walletInitialized = await walletIntegrationService.InitializeWalletAsync(userId);
@@ -88,7 +95,7 @@ public class TransactionService(IWalletIntegrationService walletIntegrationServi
         return new TransactionResponseDto
         {
             IsSuccess = true,
-            Message = "Tarjeta Ciudadana adquirida exitosamente. Se han acreditado 5 viajes de cortesía.",
+            Message = "Tarjeta Ciudadana adquirida exitosamente. Se han acreditado Q20.00 de saldo y 5 viajes de cortesía.",
             TransactionId = Guid.NewGuid().ToString()
         };
     }
