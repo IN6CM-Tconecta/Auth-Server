@@ -68,11 +68,6 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpClient<IWalletIntegrationService, WalletIntegrationService>(client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["WalletService:BaseUrl"] ?? "http://localhost:3002");
-});
-
-builder.Services.AddHttpClient<IWalletIntegrationService, WalletIntegrationService>(client =>
-{
-    client.BaseAddress = new Uri(builder.Configuration["WalletService:BaseUrl"] ?? "http://localhost:3002");
     client.DefaultRequestHeaders.Add("x-internal-secret", "SuperSecretS2S_Transmetro2026");
 });
 

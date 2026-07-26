@@ -17,7 +17,7 @@ public class TransactionController(ITransactionService transactionService) : Con
     [HttpPost("recharge")]
     public async Task<IActionResult> Recharge([FromBody] TransactionRequestDto request)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
             return Unauthorized(new { message = "Token inválido o usuario no identificado." });
@@ -39,7 +39,7 @@ public class TransactionController(ITransactionService transactionService) : Con
     [HttpPost("purchase-card")]
     public async Task<IActionResult> PurchaseCard([FromBody] TransactionRequestDto request)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
         if (!Guid.TryParse(userIdClaim, out var userId))
         {
             return Unauthorized(new { message = "Token inválido o usuario no identificado." });
