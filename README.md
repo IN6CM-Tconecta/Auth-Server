@@ -1,104 +1,120 @@
-# Transmetro Conecta - Auth Server
+# 🛡️ Auth-Server — Servidor Central de Identidad y Orquestación TConecta
 
-Microservicio de autenticación y transacciones para el proyecto "Transmetro Conecta". 
-
-Desarrollado en .NET 8 bajo el enfoque de Clean Architecture, este servidor gestiona la identidad de los usuarios mediante la validación de su DPI/CUI, recuperación de accesos y la simulación de una pasarela de recarga para la billetera virtual.
+El **Auth-Server** es el núcleo central de identidad, emisión de tokens JWT, control de acceso y orquestación del ecosistema **TConecta**. Está desarrollado sobre **.NET 8 Web API** siguiendo **Clean Architecture** y actúa como el único proveedor de autenticación para todas las aplicaciones web y móviles del sistema.
 
 ---
 
-## Requisitos Previos
+## 🏗️ Arquitectura General del Ecosistema
 
-Para ejecutar este proyecto de manera local, necesitas tener instalado:
-* **Docker** y **Docker Compose** (Recomendado para levantar todo el ecosistema).
-* **.NET 8 SDK** (Solo si deseas compilar o correr el proyecto fuera de Docker).
-* **PostgreSQL** (Si no utilizas el contenedor de base de datos).
+```
+                             ┌──────────────────────────────────┐
+                             │       Auth-Server (.NET 8)       │
+                             │  http://localhost:8080/swagger   │
+                             └────────────────┬─────────────────┘
+                                              │
+                      ┌───────────────────────┼───────────────────────┐
+                      │                       │                       │
+                      ▼                       ▼                       ▼
+           ┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
+           │    Server-Admin     │ │    Server-Client    │ │     Server-User     │
+           │ Node.js (Port 3001) │ │ Node.js (Port 3002) │ │ Node.js (Port 3003) │
+           └──────────┬──────────┘ └──────────┬──────────┘ └──────────┬──────────┘
+                      │                       │                       │
+                      ▼                       ▼                       ▼
+           ┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
+           │    Client-Admin     │ │     Client-User     │ │ Client-User-Mobile  │
+           │  React (Port 5173)  │ │  React (Port 5174)  │ │ Expo (React Native) │
+           └─────────────────────┘ └─────────────────────┘ └─────────────────────┘
+```
 
 ---
 
-## Cómo Levantar el Servidor (Docker)
+## 🔑 Credenciales Predeterminadas y Roles
 
-El proyecto está completamente dockerizado. Al iniciar el contenedor, la API aplicará automáticamente las migraciones necesarias a la base de datos PostgreSQL, creando las tablas sin intervención manual.
+Al aplicar las migraciones de Entity Framework Core, la base de datos PostgreSQL se inicializa automáticamente con las siguientes cuentas pre-sembradas:
 
-1. Abre tu terminal en la raíz del repositorio (`Transmetro-auth-server/`).
-2. Ejecuta el siguiente comando para construir y levantar los contenedores en segundo plano:
+| Rol | CUI / DPI | Correo Electrónico | Contraseña | Destino de Inicio de Sesión |
+|---|---|---|---|---|
+| **Administrador** | `1000000000001` | `admin@tconecta.com` | `Admin123!` | `http://localhost:5173/auth` |
+| **Administrador** | `0000000000000` | `admin@transmetro.com` | `AdminTransmetro2026!` | `http://localhost:5173/auth` |
+| **Ciudadano** | `2000000000002` | `usuario@correo.com` | `Usuario123!` | `http://localhost:5174/auth` / App Expo |
 
+---
+
+## 🐋 🚀 Despliegue Completo con Docker Compose
+
+El archivo de orquestación `docker-compose.yml` se encuentra ubicado dentro de este repositorio (`Auth-Server/docker-compose.yml`).
+
+### Pasos para Levantar Todo el Sistema
+
+1. Abre la terminal e ingresa al directorio de **Auth-Server**:
    ```bash
-   docker-compose up --build -d
-    ```
+   cd C:\Repositorios\TConecta\Auth-Server
+   ```
 
-3. Verifica que los contenedores estén corriendo:
-    ```bash
-    docker ps
-    ```
+2. Ejecuta el comando para construir y desplegar todos los servicios:
+   ```bash
+   docker compose up --build -d
+   ```
 
-
-
-La API estará disponible en `http://localhost:8080`.
-
----
-
-## 📖 Documentación de la API (Swagger)
-
-Una vez que el servidor esté en ejecución, puedes acceder a la interfaz interactiva de Swagger, la cual lee los comentarios XML del código para detallar cada endpoint:
-
-* **URL de Swagger UI:** `http://localhost:8080/swagger`
+3. Comprueba el estado de los contenedores:
+   ```bash
+   docker compose ps
+   ```
 
 ---
 
-## 📡 Endpoints Principales
+## 🌐 Mapa de Servicios y Endpoints
 
-Todos los endpoints retornan respuestas estandarizadas. En caso de error de validación, recibirás un código HTTP `400 Bad Request` con el detalle de los campos afectados gracias a FluentValidation.
-
-### Autenticación (`/api/auth`)
-
-* **`POST /api/auth/register`**
-Crea una cuenta nueva vinculada al Documento Personal de Identificación.
-
-
-* **Body requerido:** `CUI` (13 dígitos numéricos), `Email` (formato válido), `Password` (min. 6 caracteres).
-* **Respuesta exitosa:** Token JWT, ID del usuario y Rol.
-
-
-* **`POST /api/auth/login`**
-Autentica al usuario en el sistema.
-* **Body requerido:** `CUI` y `Password`.
-* **Respuesta exitosa:** Token JWT para consumir endpoints protegidos.
-
-
-* **`POST /api/auth/recover-password`**
-Genera un token temporal de 15 minutos para la recuperación de la cuenta, garantizando que el usuario no pierda su saldo virtual.
-
-
-* **Body requerido:** `Email`.
-* **Respuesta exitosa:** Token de recuperación (En producción, este token se enviaría por correo electrónico).
-
-
-* **`POST /api/auth/reset-password`**
-Establece una nueva contraseña utilizando el token de recuperación temporal.
-* **Body requerido:** `Email`, `Token` (generado en el paso anterior) y `NewPassword`.
-* **Respuesta exitosa:** Confirmación de actualización.
-
-
-
-### Transacciones y Billetera (`/api/transaction`)
-
-* **`POST /api/transaction/recharge`** 🔒 *(Requiere Token JWT)*
-Simula la pasarela de recarga acreditando saldo a la Tarjeta Ciudadana virtual mediante tarjeta de crédito/débito.
-
-
-* **Headers:** `Authorization: Bearer {tu_token_jwt}`
-* **Body requerido:** `CardNumber` (Validado por algoritmo de Luhn), `ExpirationDate`, `CVV` (3 o 4 dígitos), `Amount` (Mayor a 0).
-* **Respuesta exitosa:** Confirmación de transacción aprobada con ID de transacción.
-
-
+| Servicio | Tecnología | Puerto | URL Base |
+|---|---|---|---|
+| **Auth-Server** | .NET 8 Web API | `8080` | `http://localhost:8080/swagger` |
+| **Server-Admin** | Node.js Express | `3001` | `http://localhost:3001/TCONECTA/v1` |
+| **Server-Client** | Node.js Express | `3002` | `http://localhost:3002/TRANSMETRO-CONECTA-CLIENTE/v1` |
+| **Server-User** | Node.js Express | `3003` | `http://localhost:3003/TRANSMETRO-CONECTA-USUARIO/v1` |
+| **Client-Admin** | React + Vite (Nginx) | `5173` | `http://localhost:5173/auth` |
+| **Client-User** | React + Vite (Nginx) | `5174` | `http://localhost:5174/auth` |
+| **Client-User-Mobile** | Expo React Native | N/A | Metro Bundler (`npx expo start`) |
+| **PostgreSQL** | Relacional | `5432` | `localhost:5432` (`TransmetroAuthDb`) |
+| **MongoDB** | NoSQL | `27017` | `localhost:27017` (`TransmetroAdminDb`, `TransmetroUserDb`) |
 
 ---
 
-## 🏗️ Estructura del Proyecto (Clean Architecture)
+## 🧪 Guía Paso a Paso para Probar todo el Flujo
 
-El código fuente está dividido en cuatro capas principales para garantizar mantenibilidad y separación de responsabilidades:
+### 🅰️ 1. Flujo Administrativo (Client-Admin)
+1. Navega a **`http://localhost:5173/auth`**.
+2. **Iniciar Sesión**: Ingresa con CUI `1000000000001` y contraseña `Admin123!`.
+3. **Tablero de Control (`/dashboard`)**: Revisa los contadores de infraestructura y boletines.
+4. **Gestión de Rutas (`/dashboard/roads`)**: Crea una ruta `L12` (Tipo `CENTRALES`, Coordenadas `-90.5350, 14.6150\n-90.5130, 14.6400`) y cambia su estado.
+5. **Estaciones (`/dashboard/stations`)**: Crea una nueva estación `EST-12` (`El Trébol`).
+6. **Boletines de Alerta (`/dashboard/alerts`)**: Emite un boletín de mantenimiento y márcalo como resuelto.
+7. **Padrón de Usuarios (`/dashboard/users`)**: Consulta el listado de usuarios de Auth-Server.
 
-1. **Domain:** Entidades centrales (`User`) y contratos (`IUserRepository`). No tiene dependencias externas.
-2. **Application:** Lógica de negocio (`AuthService`, `TransactionService`), DTOs y validadores con FluentValidation.
-3. **Infrastructure:** Acceso a datos con Entity Framework Core (PostgreSQL) y generación/validación de Tokens JWT.
-4. **API:** Controladores HTTP, middlewares globales de manejo de excepciones y configuración de inyección de dependencias.
+---
+
+### 🅱️ 2. Flujo Web Ciudadano (Client-User)
+1. Navega a **`http://localhost:5174/auth`**.
+2. **Iniciar Sesión / Registro**: Registra una nueva cuenta o ingresa con CUI `2000000000002` y contraseña `Usuario123!`.
+3. **Billetera Ciudadana (`/wallet`)**:
+   - **Compra de Tarjeta Ciudadana (Q20.00)**: Ingresa un número de tarjeta bancaria válido por Luhn (`4532015112830366`), Expiración `12/28` y CVV `123`. Al completarse la compra S2S, se acreditarán **5 viajes de cortesía**.
+   - **Recarga de Saldo Virtual**: Selecciona el monto `Q50.00` y recarga.
+4. **Planificador Multimodal (`/planner`)**:
+   - Elige un preset de ruta o coordenadas personalizadas.
+   - Selecciona el modo: Transmetro (`Q1.00`), TuBus (`Q1.00`) o Transurbano (`Q2.00`).
+   - Haz clic en **"Calcular Ruta y Debitar Pasaje"**. Verifica la distancia Haversine, tiempo estimado, itinerario y deducción de saldo.
+5. **Feed de Alertas (`/alerts`)**: Consulta las alertas operativas emitidas por los administradores.
+
+---
+
+### 📱 3. Flujo Móvil Android (Client-User-Mobile con Expo)
+1. Abre una terminal e ingresa al repositorio móvil:
+   ```bash
+   cd C:\Repositorios\TConecta\Client-User-Mobile
+   ```
+2. Ejecuta Expo CLI:
+   ```bash
+   npx expo start
+   ```
+3. Escanea el código QR desde la aplicación **Expo Go** en Android o presiona `a` para abrir en el emulador.
+4. Ingresa con CUI `2000000000002` / `Usuario123!` para consultar saldo, recargar y planificar viajes en tiempo real.
